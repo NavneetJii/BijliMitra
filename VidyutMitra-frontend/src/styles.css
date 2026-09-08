@@ -267,15 +267,19 @@ a{ color: inherit; }
 .hero{
   display:flex; align-items:flex-start; justify-content:space-between;
   gap: 32px; flex-wrap: wrap;
-  padding: 22px 22px 30px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-  box-shadow: var(--glass-shadow);
+  padding: 12px 0 30px;
   margin-bottom: 24px;
 }
 .heroCopy{ flex: 1 1 340px; max-width: 480px; }
-.heroCopy h1{ font-size: 36px; }
+.heroCopy h1{
+  font-size: 36px;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.45);
+}
+.heroCopy p{
+  color: #EDEAF7;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+}
 
 .ticketStub{
   flex: 0 0 220px;
