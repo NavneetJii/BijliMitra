@@ -386,7 +386,9 @@ a{ color: inherit; }
   border-radius: var(--radius-m);
   box-shadow: var(--glass-shadow);
 }
-.pageHeader h2{ margin:0; }
+.pageHeader h2{ margin:0; color:#fff; text-shadow: 0 1px 10px rgba(0,0,0,0.45); }
+.pageHeader p{ color:#EDEAF7; text-shadow: 0 1px 8px rgba(0,0,0,0.4); }
+.pageHeader .iconBtn{ border-color: rgba(255,255,255,0.5); color:#fff; }
 
 /* ---------- booking grid ---------- */
 .contentGrid{ display:grid; grid-template-columns: 1fr 300px; gap: 28px; align-items:start; }
@@ -526,6 +528,9 @@ a{ color: inherit; }
   border-radius: var(--radius-m);
   box-shadow: var(--glass-shadow);
 }
+.dashHeader h2{ color:#fff; text-shadow: 0 1px 10px rgba(0,0,0,0.45); }
+.dashHeader p{ color:#EDEAF7; text-shadow: 0 1px 8px rgba(0,0,0,0.4); }
+.dashHeader .availability{ color: var(--ink); text-shadow: none; }
 .availability{
   display:flex; align-items:center; gap:8px; font-size: 13px; font-weight:600;
   padding: 8px 14px; border-radius: 999px; background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--glass-border);
