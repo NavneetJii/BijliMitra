@@ -115,7 +115,8 @@ a{ color: inherit; }
 .loading{
   min-height: 100vh;
   display:flex; align-items:center; justify-content:center; gap:10px;
-  color: var(--muted);
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.4);
   font-family: var(--font-head);
 }
 .demoBanner{
@@ -348,9 +349,10 @@ a{ color: inherit; }
 .agreeRow input{ margin-top: 3px; }
 .tabs{ display:flex; gap:6px; margin-bottom: 20px; flex-wrap: wrap; }
 .tabs button{
-  background: transparent; border: 1px solid var(--line);
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.45);
   padding: 9px 16px; border-radius: 999px;
-  font-size: 13px; font-weight: 500; color: var(--ink-soft);
+  font-size: 13px; font-weight: 500; color: #fff;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.35);
   display:flex; align-items:center; gap:7px; cursor:pointer;
 }
 .tabs button.active{ background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -389,7 +391,8 @@ a{ color: inherit; }
 /* ---------- booking grid ---------- */
 .contentGrid{ display:grid; grid-template-columns: 1fr 300px; gap: 28px; align-items:start; }
 .sectionHead{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom: 14px; gap: 10px; }
-.subHeading{ margin-top: 26px; }
+.sectionHead h2, .sectionHead h3, .sectionHead p{ color:#fff; text-shadow: 0 1px 10px rgba(0,0,0,0.4); }
+.subHeading{ margin-top: 26px; color:#fff; text-shadow: 0 1px 10px rgba(0,0,0,0.4); }
 
 .serviceGrid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); gap: 12px; }
 .serviceCard{
@@ -484,8 +487,9 @@ a{ color: inherit; }
 
 .empty{
   display:flex; flex-direction:column; align-items:center; gap:8px;
-  color: var(--muted); padding: 40px 20px; text-align:center;
-  border: 1px dashed var(--line); border-radius: var(--radius-m);
+  color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+  padding: 40px 20px; text-align:center;
+  border: 1px dashed rgba(255,255,255,0.4); border-radius: var(--radius-m);
 }
 
 /* ---------- account ---------- */
