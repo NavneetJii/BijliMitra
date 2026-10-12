@@ -142,6 +142,7 @@ const HI = {
   "Bulb fitting": "बल्ब लगाना",
   "Switch / socket": "स्विच / सॉकेट",
   "MCB / fuse change": "MCB / फ्यूज़ बदलना",
+  "Inverter installation": "इन्वर्टर लगवाना",
   "Short circuit repair": "शॉर्ट सर्किट मरम्मत",
   "Water motor capacitor": "पानी की मोटर का कैपेसिटर",
   "Login or Sign up to continue": "जारी रखने के लिए लॉगिन या साइन अप करें",
@@ -474,7 +475,8 @@ const POPULAR_SERVICES = [
   { match: "Bulb installation or replacement", image: "/popular/bulb.jpg", icon: "💡", label: "Bulb fitting" },
   { match: "Short Circuit Detection & Repair", image: "/popular/short-circuit.jpg", icon: "⚠️", label: "Short circuit repair" },
   { match: "Capacitor Installation in Motor", image: "/popular/motor-capacitor.jpg", icon: "🚰", label: "Water motor capacitor" },
-  { match: "MCB or fuse replacement", image: "/popular/mcb-fuse.jpg", icon: "⚡", label: "MCB / fuse change" }
+  { match: "MCB or fuse replacement", image: "/popular/mcb-fuse.jpg", icon: "⚡", label: "MCB / fuse change" },
+  { match: "Inverter installation (without wiring)", image: "/popular/inverter.jpg", icon: "🔋", label: "Inverter installation" }
 ];
 
 function readProfileCache(id){ try{ const c=JSON.parse(localStorage.getItem("bijlimitra_profile_"+id)||"null"); return c&&c.id===id?c:null; }catch(e){ return null; } }
