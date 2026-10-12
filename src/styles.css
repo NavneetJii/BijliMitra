@@ -806,26 +806,24 @@ tr.clickableRow:hover td{ background: var(--paper-raised, #f7f6ef); }
 
 /* Popular services (home page) */
 .popularSection{margin:10px 0 16px}
-.popularGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
-@media(min-width:720px){.popularGrid{grid-template-columns:repeat(3,1fr)}}
-/* a lone last card is centred at normal card width (never stretched) */
-@media(max-width:719px){.popularGrid > .popularCard:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;width:calc((100% - 10px)/2)}}
-@media(min-width:720px){.popularGrid > .popularCard:last-child:nth-child(3n+1){grid-column:1/-1;justify-self:center;width:calc((100% - 20px)/3)}}
-.popularCard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:14px;border-radius:12px;border:1px solid rgba(128,140,160,.3);background:rgba(128,140,160,.08);color:inherit;cursor:pointer;font:inherit}
+/* Compact popular services: small cards, all visible (3 per row on phones, one row on desktop) */
+.popularGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+@media(min-width:720px){.popularGrid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}}
+.popularCard{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:8px;border-radius:12px;border:1px solid rgba(128,140,160,.3);background:rgba(128,140,160,.08);color:inherit;cursor:pointer;font:inherit}
 .popularCard:hover{border-color:#f5b301}
 .popularIcon{font-size:26px;line-height:1}
-.popularCard b{font-size:15px}
-.popularPrice{font-size:13px;opacity:.75}
+.popularCard b{font-size:12.5px;line-height:1.25}
+.popularPrice{font-size:12px;opacity:.75}
 .popularLoading{cursor:default;opacity:.7}
 .popularLoading .popularPrice{display:block;width:60%;height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(128,140,160,.15),rgba(128,140,160,.35),rgba(128,140,160,.15));background-size:200% 100%;animation:popularShimmer 1.2s linear infinite}
 @keyframes popularShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 
 /* Popular services: product-style photos */
 .popularCard{padding:0;overflow:hidden;gap:0}
-.popularCard > b, .popularCard > .popularPrice{padding:0 12px}
-.popularCard > b{margin-top:10px}
-.popularCard > .popularPrice{margin:2px 0 12px}
-.popularIcon{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3;background:#fff;font-size:44px}
+.popularCard > b, .popularCard > .popularPrice{padding:0 6px}
+.popularCard > b{margin-top:6px}
+.popularCard > .popularPrice{margin:1px 0 8px}
+.popularIcon{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3;background:#fff;font-size:30px}
 .popularPhoto{display:block;width:100%;aspect-ratio:4/3;background:#f9f9f9;overflow:hidden}
 .popularPhoto img{width:100%;height:100%;object-fit:contain;display:block}
 .popularPhotoLoading{background:linear-gradient(90deg,rgba(128,140,160,.12),rgba(128,140,160,.28),rgba(128,140,160,.12));background-size:200% 100%;animation:popularShimmer 1.2s linear infinite}
