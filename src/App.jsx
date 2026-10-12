@@ -143,6 +143,11 @@ const HI = {
   "Switch / socket": "स्विच / सॉकेट",
   "MCB / fuse change": "MCB / फ्यूज़ बदलना",
   "Inverter installation": "इन्वर्टर लगवाना",
+  "Happy Chhath Puja, Durga Puja & Diwali!": "छठ पूजा, दुर्गा पूजा एवं दीपावली की हार्दिक शुभकामनाएँ!",
+  "Light up your home, shop or pandal this festive season with BijliMitra.": "इस त्योहारों के मौसम में अपने घर, दुकान या पंडाल को रोशनी से सजाएँ — BijliMitra के साथ।",
+  "Book festive decoration lights": "सजावट की लाइटें बुक करें",
+  "Tap the picture or the button to start booking.": "बुकिंग शुरू करने के लिए तस्वीर या बटन पर टैप करें।",
+  "Festive season decoration": "त्योहारों की सजावट",
   "Short circuit repair": "शॉर्ट सर्किट मरम्मत",
   "Water motor capacitor": "पानी की मोटर का कैपेसिटर",
   "Login or Sign up to continue": "जारी रखने के लिए लॉगिन या साइन अप करें",
@@ -479,6 +484,8 @@ const POPULAR_SERVICES = [
   { match: "Inverter installation (without wiring)", image: "/popular/inverter.jpg", icon: "🔋", label: "Inverter installation" }
 ];
 
+const FESTIVE_SERVICE_NAME = "Decorative light installation"; // service the festive banner opens in the booking flow
+
 function readProfileCache(id){ try{ const c=JSON.parse(localStorage.getItem("bijlimitra_profile_"+id)||"null"); return c&&c.id===id?c:null; }catch(e){ return null; } }
 function writeProfileCache(id,p){ try{ localStorage.setItem("bijlimitra_profile_"+id, JSON.stringify(p)); }catch(e){} }
 
@@ -671,6 +678,10 @@ async function savePhone() {
 const popularServices = useMemo(()=>POPULAR_SERVICES
   .map(p=>({ ...p, service: services.find(s=>s.name===p.match) }))
   .filter(p=>p.service), [services]);
+function openFestive(){
+  const svc = services.find(x=>x.name===FESTIVE_SERVICE_NAME);
+  if(svc){ pickPopular(svc); } else { setTab("book"); setStep(2); }
+}
 function pickPopular(s){
   setCart(c=>({ ...c, [s.id]: Math.max(1, c[s.id]||0) }));
   setOpenCategories(o=>({ ...o, [s.category || "Other Services"]: true }));
@@ -874,6 +885,15 @@ if (!selectedItems.length) {
           <div className="ticketStubAmount">{money(ADVANCE)}</div>
           <div className="ticketStubFoot">{t("Verified by Cashfree · non-refundable")}</div>
         </div>
+      </section>
+      <section className="festiveSection">
+        <h2 className="festiveTitle">🪔 {t("Happy Chhath Puja, Durga Puja & Diwali!")}</h2>
+        <p className="festiveSub">{t("Light up your home, shop or pandal this festive season with BijliMitra.")}</p>
+        <button type="button" className="festiveImageBtn" onClick={openFestive} aria-label={t("Festive season decoration")}>
+          <img src="/festive/festive-banner.webp" alt={t("Festive season decoration")} width="720" height="720" loading="lazy" decoding="async"/>
+        </button>
+        <button type="button" className="primary full festiveCta" onClick={openFestive}>🪔 {t("Book festive decoration lights")}</button>
+        <p className="festiveHint">{t("Tap the picture or the button to start booking.")}</p>
       </section>
       {(popularServices.length>0 || !servicesLive) && <section className="popularSection">
         <div className="sectionHead"><div><h2>{t("Popular services")}</h2><p>{t("Tap a service to start booking.")}</p></div></div>
