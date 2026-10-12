@@ -808,9 +808,9 @@ tr.clickableRow:hover td{ background: var(--paper-raised, #f7f6ef); }
 .popularSection{margin:10px 0 16px}
 .popularGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
 @media(min-width:720px){.popularGrid{grid-template-columns:repeat(3,1fr)}}
-/* an odd last card spans the full row so the grid never looks lopsided */
-@media(max-width:719px){.popularGrid > .popularCard:last-child:nth-child(odd){grid-column:1/-1}}
-@media(min-width:720px){.popularGrid > .popularCard:last-child:nth-child(3n+1){grid-column:1/-1}.popularGrid > .popularCard:last-child:nth-child(3n+2){grid-column:span 2}}
+/* a lone last card is centred at normal card width (never stretched) */
+@media(max-width:719px){.popularGrid > .popularCard:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;width:calc((100% - 10px)/2)}}
+@media(min-width:720px){.popularGrid > .popularCard:last-child:nth-child(3n+1){grid-column:1/-1;justify-self:center;width:calc((100% - 20px)/3)}}
 .popularCard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:14px;border-radius:12px;border:1px solid rgba(128,140,160,.3);background:rgba(128,140,160,.08);color:inherit;cursor:pointer;font:inherit}
 .popularCard:hover{border-color:#f5b301}
 .popularIcon{font-size:26px;line-height:1}
