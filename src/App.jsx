@@ -887,13 +887,14 @@ if (!selectedItems.length) {
         </div>
       </section>
       <section className="festiveSection">
-        <h2 className="festiveTitle">🪔 {t("Happy Chhath Puja, Durga Puja & Diwali!")}</h2>
-        <p className="festiveSub">{t("Light up your home, shop or pandal this festive season with BijliMitra.")}</p>
         <button type="button" className="festiveImageBtn" onClick={openFestive} aria-label={t("Festive season decoration")}>
           <img src="/festive/festive-banner.webp" alt={t("Festive season decoration")} width="720" height="720" loading="lazy" decoding="async"/>
         </button>
-        <button type="button" className="primary full festiveCta" onClick={openFestive}>🪔 {t("Book festive decoration lights")}</button>
-        <p className="festiveHint">{t("Tap the picture or the button to start booking.")}</p>
+        <div className="festiveText">
+          <h2 className="festiveTitle">🪔 {t("Happy Chhath Puja, Durga Puja & Diwali!")}</h2>
+          <p className="festiveSub">{t("Light up your home, shop or pandal this festive season with BijliMitra.")}</p>
+          <button type="button" className="primary festiveCta" onClick={openFestive}>🪔 {t("Book festive decoration lights")}</button>
+        </div>
       </section>
       {(popularServices.length>0 || !servicesLive) && <section className="popularSection">
         <div className="sectionHead"><div><h2>{t("Popular services")}</h2><p>{t("Tap a service to start booking.")}</p></div></div>
