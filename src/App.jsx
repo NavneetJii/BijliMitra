@@ -11,7 +11,7 @@ import {
   getOrderItems, getOrderHistory, getOrderPins,
   confirmFinalBill, getPendingOrders, getElectricianProfile,
   getAssignedOrders, acceptOrder, startOrderWork, addTechnicianService,
-  removeTechnicianService, generateFinalBill, verifyCompletedPin, startCashfreeBookingCheckout,
+  removeTechnicianService, setInspectionPrice, generateFinalBill, verifyCompletedPin, startCashfreeBookingCheckout,
   startCashfreeFinalCheckout, createFinalPaymentQr, recordCashPayment,
   getDailyPayments, getAdminElectricians, getAdminOrders, getAdminOrdersByDate,
   getAdminPendingOrders, routeOrderToElectrician, unrouteOrder,
@@ -146,6 +146,11 @@ const HI = {
   "Happy Chhath Puja, Durga Puja & Diwali!": "छठ पूजा, दुर्गा पूजा एवं दीपावली की हार्दिक शुभकामनाएँ!",
   "Light up your home, shop or pandal this festive season with BijliMitra.": "इस त्योहारों के मौसम में अपने घर, दुकान या पंडाल को रोशनी से सजाएँ — BijliMitra के साथ।",
   "Book festive decoration lights": "सजावट की लाइटें बुक करें",
+  "Price after inspection": "निरीक्षण के बाद कीमत तय होगी",
+  "To be decided": "बाद में तय होगा",
+  "Includes an item whose price will be decided by the electrician after inspection.": "इसमें एक ऐसी सेवा शामिल है जिसकी कीमत इलेक्ट्रीशियन निरीक्षण के बाद तय करेंगे।",
+  "Other work – price after inspection": "अन्य काम – निरीक्षण के बाद कीमत",
+  "Not Sure? Electrician Will Quote": "पक्का नहीं पता? इलेक्ट्रीशियन कीमत बताएँगे",
   "Tap the picture or the button to start booking.": "बुकिंग शुरू करने के लिए तस्वीर या बटन पर टैप करें।",
   "Festive season decoration": "त्योहारों की सजावट",
   "Short circuit repair": "शॉर्ट सर्किट मरम्मत",
@@ -266,6 +271,12 @@ function computeOrderTax(order) {
 function computeCompanyShare(order) {
   const paid = Number(order.amount_paid || 0);
   return Math.round((paid - computeOrderTax(order) - computeElectricianShare(order)) * 100) / 100;
+}
+// Amount shown on order lists: orders whose only service is "price after
+// inspection" have a total of 0 until the electrician enters the price.
+function orderAmountText(o, t = (x)=>x) {
+  const v = Number(o.final_total || o.estimated_total || 0);
+  return v > 0 ? money(v) : t("Price after inspection");
 }
 function prettyStatus(s) {
   return String(s || "").replaceAll("_", " ").replace(/\b\w/g, x => x.toUpperCase());
@@ -435,15 +446,21 @@ function PopularImage({src,icon}) {
 }
 
 function ServiceCard({s, qty, onChange}) {
+  const { t } = useLanguage();
+  // Services flagged price_on_inspection have no fixed price: the electrician
+  // enters the amount after seeing the job, so the customer just picks it once.
+  const maxQty = s.price_on_inspection ? 1 : Infinity;
   return <div className="serviceCard">
     <div>
-      <h3>{s.name}</h3>
-      <div className="price">{money(s.price)} <span>/ {s.unit || "item"}</span></div>
+      <h3>{t(s.name)}</h3>
+      {s.price_on_inspection
+        ? <div className="price"><span>{t("Price after inspection")}</span></div>
+        : <div className="price">{money(s.price)} <span>/ {s.unit || "item"}</span></div>}
     </div>
     <div className="qty">
       <button onClick={()=>onChange(Math.max(0,qty-1))}><Minus size={15}/></button>
       <b>{qty}</b>
-      <button onClick={()=>onChange(qty+1)}><Plus size={15}/></button>
+      <button onClick={()=>onChange(Math.min(maxQty,qty+1))}><Plus size={15}/></button>
     </div>
   </div>;
 }
@@ -456,10 +473,12 @@ function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=
   const subtotal = customerTotal + techTotal;
   const gst = Math.round(subtotal * GST_RATE * 100) / 100;
   const total = subtotal + gst;
+  const hasUndecided = [...items, ...technicianItems].some(x=>Number(x.price ?? x.unit_price ?? 0)===0);
   return <div className="billBox">
     <div className="billRow"><span>{t("Base Service Pack")}</span><b>{money(customerTotal)}</b></div>
     {technicianItems.length>0 && <div className="billRow"><span>{t("Technician Added Services")}</span><b>{money(techTotal)}</b></div>}
     <div className="billRow"><span>{t("GST (5%)")}</span><b>{money(gst)}</b></div>
+    {hasUndecided && <div className="cancelNote">{t("Includes an item whose price will be decided by the electrician after inspection.")}</div>}
     <div className="billRow strong"><span>{final ? t("Final Total Work Amount") : t("Estimated Total Work Amount")}</span><b>{money(total)}</b></div>
     <div className="billRow token"><span>{paid ? t("Visiting Charge Paid (incl. GST)") : t("Visiting Charge (to be paid next, incl. GST)")}</span><b>{money(advance)}</b></div>
     <div className="billDue"><span>{t("Amount Due")}</span><strong>{money(total)}</strong></div>
@@ -706,6 +725,7 @@ function pickPopular(s){
 const servicesByCategory = useMemo(()=>{
   const groups = {};
   services.forEach(s=>{
+    if (s.price_on_inspection) return; // electrician-only service: never offered to customers
     const cat = s.category || "Other Services";
     if (!groups[cat]) groups[cat] = [];
     groups[cat].push(s);
@@ -795,7 +815,7 @@ const servicesByCategory = useMemo(()=>{
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, selectedOrder?.id]);
-  const selectedItems=useMemo(()=>services.filter(s=>cart[s.id]>0).map(s=>({...s,quantity:cart[s.id]})),[services,cart]);
+  const selectedItems=useMemo(()=>services.filter(s=>!s.price_on_inspection && cart[s.id]>0).map(s=>({...s,quantity:cart[s.id]})),[services,cart]);
   const customerTotal=selectedItems.reduce((a,x)=>a+x.price*x.quantity,0);
 
   async function placeOrder(){
@@ -973,7 +993,7 @@ if (!selectedItems.length) {
               const selectedCount = catServices.filter(s=>cart[s.id]>0).length;
               return <div className="serviceCategoryGroup" key={category}>
                 <button type="button" className="serviceCategoryHeader" onClick={()=>setOpenCategories({...openCategories,[category]:!isOpen})}>
-                  <span>{category}</span>
+                  <span>{t(category)}</span>
                   <span className="serviceCategoryHeaderRight">
                     {selectedCount>0 && <span className="categoryBadge">{selectedCount} selected</span>}
                     <ChevronDown size={16} className={isOpen?"chevronOpen":""}/>
@@ -1046,7 +1066,7 @@ if (!selectedItems.length) {
         <div className="sectionHead"><div><h2>{t("My orders")}</h2><p>{t("Your booking and work status.")}</p></div><button className="iconBtn" onClick={load}><RefreshCw size={17}/></button></div>
         {!orders.length?<div className="empty">{t("No orders yet.")}</div>:orders.map(o=><button className="orderCard" key={o.id} onClick={()=>openOrder(o)}>
           <div><span className="orderId">#{o.id.slice(0,8).toUpperCase()}</span><h3>{t(prettyStatus(o.status))}</h3><span className="muted">{new Date(o.created_at).toLocaleString()}</span></div>
-          <div className="orderRight"><b>{money(o.final_total || o.estimated_total)}</b><ChevronRight/></div>
+          <div className="orderRight"><b>{orderAmountText(o,t)}</b><ChevronRight/></div>
         </button>)}
       </div>
     </div>}
@@ -1057,7 +1077,7 @@ if (!selectedItems.length) {
         {selectedOrder.electrician && <div className="addressBox"><User size={18}/><span>{t("Your electrician:")} <b>{selectedOrder.electrician.full_name || t("Assigned")}</b></span></div>}
         <div className="addressBox"><MapPin size={18}/><span>{selectedOrder.landmark}, {selectedOrder.city}, {selectedOrder.district}, {selectedOrder.state} — {selectedOrder.pincode}{selectedOrder.location_url && <> · <a href={selectedOrder.location_url} target="_blank" rel="noreferrer">{t("Open shared location")}</a></>}</span></div>
         <PinBox pins={pins}/>
-        <h3>{t("Services")}</h3>{items.map(i=><div className="miniRow" key={i.id}><span>{i.service_name} × {i.quantity}</span><b>{money(i.total_price ?? i.unit_price*i.quantity)}</b></div>)}
+        <h3>{t("Services")}</h3>{items.map(i=><div className="miniRow" key={i.id}><span>{i.service_name} × {i.quantity}</span><b>{Number(i.unit_price)===0 ? t("To be decided") : money(i.total_price ?? i.unit_price*i.quantity)}</b></div>)}
         <BillBox items={items.filter(i=>i.source==="customer").map(i=>({price:i.unit_price,quantity:i.quantity}))} technicianItems={items.filter(i=>i.source==="technician").map(i=>({price:i.unit_price,quantity:i.quantity}))} advance={selectedOrder.advance_amount} final={Boolean(selectedOrder.final_total)}/>
         {selectedOrder.status==="completed" && <OrderReview order={selectedOrder}/>}
         {selectedOrder.status==="final_bill_pending" && <button className="primary full" disabled={busy} onClick={confirmBill}>{busy?t("Confirming…"):t("Confirm final bill")}</button>}
@@ -1125,6 +1145,7 @@ function Electrician({user}) {
   const [swapItemId,setSwapItemId]=useState(null);
   const [swapServiceId,setSwapServiceId]=useState("");
   const [swapQty,setSwapQty]=useState(1);
+  const [inspAmounts,setInspAmounts]=useState({});
 
   function startSwap(i){ setSwapItemId(i.id); setSwapServiceId(""); setSwapQty(i.quantity); }
   function cancelSwap(){ setSwapItemId(null); setSwapServiceId(""); setSwapQty(1); }
@@ -1182,6 +1203,9 @@ function Electrician({user}) {
 
   async function selectOrder(o){setSelected(o);setItems(await getOrderItems(o.id));setQr(null);}
   async function doAction(fn){setBusy(true);setMsg("");try{await fn();await load();if(selected){const fresh=(await getAssignedOrders(user.id)).find(x=>x.id===selected.id);if(fresh){setSelected(fresh);setItems(await getOrderItems(fresh.id));}}}catch(e){setMsg(errorText(e))}finally{setBusy(false)}}
+  // Items whose price the electrician must enter (service flagged price_on_inspection).
+  const isInspectionItem = (i)=>Boolean(services.find(s=>s.id===i.service_id)?.price_on_inspection);
+  const pendingInspectionItems = items.filter(i=>isInspectionItem(i) && Number(i.unit_price)<=0);
   const active = assigned.find(o=>["assigned","work_in_progress","final_bill_pending","customer_confirmed","final_payment_pending"].includes(o.status));
   const inProgressOrders = assigned.filter(o=>o.status!=="completed");
   const completedOrders = assigned.filter(o=>o.status==="completed");
@@ -1195,11 +1219,11 @@ function Electrician({user}) {
     <div className="electricianGrid">
       <main>
         <div className="sectionHead"><div><h2>Pending orders</h2><p>Only confirmed ₹51 visiting-charge bookings are shown.</p></div><button className="iconBtn" onClick={load}><RefreshCw size={17}/></button></div>
-        {pending.filter(o=>!active || o.id===active.id).map(o=><div className="pendingCard" key={o.id}><div><span className="orderId">#{o.id.slice(0,8).toUpperCase()}</span><h3>Service booking</h3>{o.customer_name && <p><b>{o.customer_name}</b>{o.customer_phone && <> · {o.customer_phone}</>}</p>}<p>{o.landmark}, {o.city}, {o.district}, {o.state} — {o.pincode}{o.location_url && <> · <a href={o.location_url} target="_blank" rel="noreferrer">Open shared location</a></>}</p><b>{money(o.estimated_total)} estimated</b></div><button className="primary" disabled={busy||Boolean(active)} onClick={()=>doAction(()=>acceptOrder(o.id,user.id))}>{active?"Busy":"Accept order"}</button></div>)}
+        {pending.filter(o=>!active || o.id===active.id).map(o=><div className="pendingCard" key={o.id}><div><span className="orderId">#{o.id.slice(0,8).toUpperCase()}</span><h3>Service booking</h3>{o.customer_name && <p><b>{o.customer_name}</b>{o.customer_phone && <> · {o.customer_phone}</>}</p>}<p>{o.landmark}, {o.city}, {o.district}, {o.state} — {o.pincode}{o.location_url && <> · <a href={o.location_url} target="_blank" rel="noreferrer">Open shared location</a></>}</p><b>{Number(o.estimated_total)>0 ? `${money(o.estimated_total)} estimated` : "Price after inspection"}</b></div><button className="primary" disabled={busy||Boolean(active)} onClick={()=>doAction(()=>acceptOrder(o.id,user.id))}>{active?"Busy":"Accept order"}</button></div>)}
         {!pending.length&&<div className="empty">No confirmed pending orders.</div>}
 
         <h2 className="subHeading">Orders in progress</h2>
-        {inProgressOrders.map(o=><button className={`assignedCard ${selected?.id===o.id?"selected":""}`} key={o.id} onClick={()=>selectOrder(o)}><span>#{o.id.slice(0,8).toUpperCase()}</span><b>{prettyStatus(o.status)}</b><span>{money(o.final_total||o.estimated_total)}</span></button>)}
+        {inProgressOrders.map(o=><button className={`assignedCard ${selected?.id===o.id?"selected":""}`} key={o.id} onClick={()=>selectOrder(o)}><span>#{o.id.slice(0,8).toUpperCase()}</span><b>{prettyStatus(o.status)}</b><span>{orderAmountText(o)}</span></button>)}
         {!inProgressOrders.length && <div className="empty">No orders in progress.</div>}
 
         <div className="sectionHead"><h2 className="subHeading">Completed orders</h2>
@@ -1215,7 +1239,7 @@ function Electrician({user}) {
               {displayedCompleted.map(o=><tr key={o.id} className="clickableRow" onClick={()=>selectOrder(o)}>
                 <td>#{o.id.slice(0,8).toUpperCase()}</td>
                 <td>{prettyStatus(o.status)}</td>
-                <td>{money(o.final_total||o.estimated_total)}</td>
+                <td>{orderAmountText(o)}</td>
                 <td>{new Date(o.created_at).toLocaleDateString()}</td>
               </tr>)}
               {!displayedCompleted.length && <tr><td colSpan="4" className="muted">{completedDateFilter ? "No completed orders on this date." : "No completed orders yet."}</td></tr>}
@@ -1229,10 +1253,10 @@ function Electrician({user}) {
           <div className="sectionHead"><div><span className="orderTag">#{selected.id.slice(0,8).toUpperCase()}</span><h2>{prettyStatus(selected.status)}</h2></div></div>
           {selected.customer_name && <div className="addressBox"><User size={18}/><span><b>{selected.customer_name}</b>{selected.customer_phone && <> · {selected.customer_phone}</>}</span></div>}
           <div className="addressBox"><MapPin size={18}/><span>{selected.landmark}, {selected.city}, {selected.district}, {selected.state} — {selected.pincode}{selected.location_url && <> · <a href={selected.location_url} target="_blank" rel="noreferrer">Open shared location</a></>}</span></div>
-          <h3>Order services</h3>{items.map(i=><div className={`miniRow ${swapItemId===i.id?"hasSwap":""}`} key={i.id}>
+          <h3>Order services</h3>{items.map(i=><div className={`miniRow ${(swapItemId===i.id||isInspectionItem(i))?"hasSwap":""}`} key={i.id}>
             <span>{i.service_name} × {i.quantity} <small>{i.source}</small></span>
             <span className="miniRowRight">
-              <b>{money(i.total_price ?? i.unit_price*i.quantity)}</b>
+              <b>{Number(i.unit_price)===0 ? "Price not set" : money(i.total_price ?? i.unit_price*i.quantity)}</b>
               {i.source==="technician" && selected.status==="work_in_progress" && (
                 <button className="iconBtn danger" title="Remove this service" disabled={busy} onClick={()=>doAction(()=>removeTechnicianService(selected.id,user.id,i.id))}><X size={14}/></button>
               )}
@@ -1240,6 +1264,18 @@ function Electrician({user}) {
                 <button className="iconBtn" title="Change the service the customer booked" disabled={busy} onClick={()=>swapItemId===i.id?cancelSwap():startSwap(i)}><Pencil size={14}/></button>
               )}
             </span>
+            {isInspectionItem(i) && <div className="inspectionPrice">
+              {selected.status==="work_in_progress" ? <>
+                <label>{Number(i.unit_price)>0 ? "Price set by you (₹) — you can still change it" : "Enter the price for this job (₹) after inspection"}</label>
+                <div className="inspectionPriceRow">
+                  <input type="number" inputMode="decimal" min="1" step="1" placeholder="Amount in ₹, before GST"
+                    value={inspAmounts[i.id] ?? (Number(i.unit_price)>0 ? String(i.unit_price) : "")}
+                    onChange={e=>setInspAmounts({...inspAmounts,[i.id]:e.target.value})}/>
+                  <button className="primary" disabled={busy || !(Number(inspAmounts[i.id])>0)} onClick={()=>doAction(()=>setInspectionPrice(selected.id,user.id,i.id,Number(inspAmounts[i.id])))}>Save price</button>
+                </div>
+                <small className="muted">This is the amount before 5% GST. The customer will see it in the final bill and must confirm it.</small>
+              </> : <small className="muted">The price for this job is set after you start work and inspect it.</small>}
+            </div>}
             {swapItemId===i.id && <div className="swapServicePanel">
               <select value={swapServiceId} onChange={e=>setSwapServiceId(e.target.value)}>
                 <option value="">Select the correct service…</option>
@@ -1261,7 +1297,7 @@ function Electrician({user}) {
 
           {selected.status==="assigned" && <div className="actionBox"><h3>Start work</h3><p>Ask the customer for the Work Start PIN.</p><input inputMode="numeric" maxLength="6" placeholder="Enter start PIN" value={pin} onChange={e=>setPin(e.target.value)}/><button className="primary full" disabled={busy} onClick={()=>doAction(()=>startOrderWork(selected.id,pin))}>Verify & start work</button></div>}
 
-          {selected.status==="work_in_progress" && <div className="actionBox"><h3>Add technician service</h3><select value={serviceId} onChange={e=>setServiceId(e.target.value)}><option value="">Select service</option>{services.map(s=><option key={s.id} value={s.id}>{s.name} — {money(s.price)}</option>)}</select><div className="qtyLine"><button onClick={()=>setQty(Math.max(1,qty-1))}><Minus/></button><b>{qty}</b><button onClick={()=>setQty(qty+1)}><Plus/></button></div><button className="secondary full" disabled={busy||!serviceId} onClick={()=>doAction(()=>addTechnicianService(selected.id,user.id,serviceId,qty))}>Add service</button><button className="primary full" disabled={busy} onClick={()=>doAction(()=>generateFinalBill(selected.id,user.id))}>Generate final bill</button></div>}
+          {selected.status==="work_in_progress" && <div className="actionBox"><h3>Add technician service</h3><select value={serviceId} onChange={e=>setServiceId(e.target.value)}><option value="">Select service</option>{services.map(s=><option key={s.id} value={s.id}>{s.name} — {money(s.price)}</option>)}</select><div className="qtyLine"><button onClick={()=>setQty(Math.max(1,qty-1))}><Minus/></button><b>{qty}</b><button onClick={()=>setQty(qty+1)}><Plus/></button></div><button className="secondary full" disabled={busy||!serviceId} onClick={()=>doAction(()=>addTechnicianService(selected.id,user.id,serviceId,qty))}>Add service</button>{pendingInspectionItems.length>0 && <p className="muted tableHint">Enter and save the price for "{pendingInspectionItems[0].service_name}" above before generating the final bill.</p>}<button className="primary full" disabled={busy || pendingInspectionItems.length>0} onClick={()=>doAction(()=>generateFinalBill(selected.id,user.id))}>Generate final bill</button></div>}
 
           {selected.status==="final_bill_pending" && <div className="actionBox"><h3>Waiting for customer</h3><p>The customer must review and confirm the final bill before you can complete the work.</p></div>}
 
@@ -1571,7 +1607,7 @@ function Admin({user}) {
             <span className="orderId">#{o.id.slice(0,8).toUpperCase()}</span>
             <h3>{o.customer_name || "—"}{o.customer_phone && <> · {o.customer_phone}</>}</h3>
             <p>{o.landmark}, {o.city} — {o.pincode}</p>
-            <b>{money(o.estimated_total)} estimated</b>
+            <b>{Number(o.estimated_total)>0 ? `${money(o.estimated_total)} estimated` : "Price after inspection"}</b>
           </div>
           <div className="routeControls" onClick={e=>e.stopPropagation()}>
             {routedTo
@@ -1626,8 +1662,8 @@ function Admin({user}) {
             {!dateLoading && !displayOrders.length && <tr><td colSpan="8" className="muted">{statusFilter ? `No ${prettyStatus(statusFilter).toLowerCase()} orders${selectedDate?" on this date":""}.` : selectedDate ? "No orders on this date." : "No orders yet."}</td></tr>}
           </tbody>
           {!dateLoading && displayOrders.length>0 && <tfoot><tr className="totalRow">
-            <td colSpan="3">Total ({displayOrders.length} order{displayOrders.length===1?"":"s"})</td>
-            <td>{money(displayOrders.reduce((s,o)=>s+Number(o.amount_paid||0),0))}</td>
+            <td colSpan="3">Total — completed orders only ({displayOrders.filter(o=>o.status==="completed").length})</td>
+            <td>{money(displayOrders.filter(o=>o.status==="completed").reduce((s,o)=>s+Number(o.amount_paid||0),0))}</td>
             <td></td>
             <td>{money(displayOrders.filter(o=>o.status==="completed").reduce((s,o)=>s+computeCompanyShare(o),0))}</td>
             <td>{money(displayOrders.filter(o=>o.status==="completed").reduce((s,o)=>s+computeOrderTax(o),0))}</td>
@@ -1649,7 +1685,7 @@ function Admin({user}) {
           {selectedAdminOrder.routed_electrician_id && <div className="addressBox"><Wrench size={18}/><span>Routed to: <b>{electricians.find(e=>e.id===selectedAdminOrder.routed_electrician_id)?.profiles?.full_name || "electrician"}</b></span></div>}
           <PinBox pins={adminOrderPins}/>
           <h3>Services</h3>
-          {adminOrderItems.map(i=><div className="miniRow" key={i.id}><span>{i.service_name} × {i.quantity} <small>{i.source}</small></span><b>{money(i.total_price ?? i.unit_price*i.quantity)}</b></div>)}
+          {adminOrderItems.map(i=><div className="miniRow" key={i.id}><span>{i.service_name} × {i.quantity} <small>{i.source}</small></span><b>{Number(i.unit_price)===0 ? "To be decided" : money(i.total_price ?? i.unit_price*i.quantity)}</b></div>)}
           <BillBox
             items={adminOrderItems.filter(i=>i.source==="customer").map(i=>({price:i.unit_price,quantity:i.quantity}))}
             technicianItems={adminOrderItems.filter(i=>i.source==="technician").map(i=>({price:i.unit_price,quantity:i.quantity}))}

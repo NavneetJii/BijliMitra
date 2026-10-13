@@ -339,6 +339,22 @@ export async function addTechnicianService(orderId, electricianId, serviceId, qu
   return data;
 }
 
+/**
+ * Electrician enters (or corrects) the price of a "price after inspection"
+ * service once they have seen the job. The database only accepts this from
+ * the assigned electrician, while the order is in work_in_progress.
+ */
+export async function setInspectionPrice(orderId, electricianId, orderItemId, amount) {
+  const { data, error } = await supabase.rpc("set_inspection_price", {
+    p_order_id: orderId,
+    p_electrician_id: electricianId,
+    p_order_item_id: orderItemId,
+    p_amount: amount
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function removeTechnicianService(orderId, electricianId, orderItemId) {
   const { data, error } = await supabase.rpc("remove_technician_service", {
     p_order_id: orderId,
