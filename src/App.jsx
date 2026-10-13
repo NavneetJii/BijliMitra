@@ -1622,6 +1622,13 @@ function Admin({user}) {
             </tr>)}
             {!dateLoading && !displayOrders.length && <tr><td colSpan="7" className="muted">{statusFilter ? `No ${prettyStatus(statusFilter).toLowerCase()} orders${selectedDate?" on this date":""}.` : selectedDate ? "No orders on this date." : "No orders yet."}</td></tr>}
           </tbody>
+          {!dateLoading && displayOrders.length>0 && <tfoot><tr className="totalRow">
+            <td colSpan="3">Total ({displayOrders.length} order{displayOrders.length===1?"":"s"})</td>
+            <td>{money(displayOrders.reduce((s,o)=>s+Number(o.amount_paid||0),0))}</td>
+            <td></td>
+            <td>{money(displayOrders.filter(o=>o.status==="completed").reduce((s,o)=>s+computeCompanyShare(o),0))}</td>
+            <td></td>
+          </tr></tfoot>}
         </table>
       </div>
     </div>

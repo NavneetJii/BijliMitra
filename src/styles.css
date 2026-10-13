@@ -894,3 +894,6 @@ tr.clickableRow:hover td{ background: var(--paper-raised, #f7f6ef); }
   .festiveTitle{ font-size:17.5px; }
   .festiveSub{ font-size:13.5px; }
 }
+
+/* Admin orders table: totals row */
+.adminTable tfoot .totalRow td{ font-weight:800; border-top:2px solid #cbd5e1; background:#f1f5f9; }
