@@ -256,14 +256,16 @@ function computeElectricianShare(order) {
 //   - total tax (5% GST on the service subtotal + the 18% tax component
 //     inside the visiting charge)
 //   - the electrician's share (computeElectricianShare above).
-function computeCompanyShare(order) {
+function computeOrderTax(order) {
   const subtotal = Number(order.customer_services_total || 0) + Number(order.technician_services_total || 0);
   const advance = Number(order.advance_amount || 0);
   const serviceGst = Math.round(subtotal * 0.05 * 100) / 100;
   const visitingTax = advance - advance / 1.18;
-  const totalTax = serviceGst + visitingTax;
+  return Math.round((serviceGst + visitingTax) * 100) / 100;
+}
+function computeCompanyShare(order) {
   const paid = Number(order.amount_paid || 0);
-  return Math.round((paid - totalTax - computeElectricianShare(order)) * 100) / 100;
+  return Math.round((paid - computeOrderTax(order) - computeElectricianShare(order)) * 100) / 100;
 }
 function prettyStatus(s) {
   return String(s || "").replaceAll("_", " ").replace(/\b\w/g, x => x.toUpperCase());
@@ -1608,9 +1610,9 @@ function Admin({user}) {
       </div>
       <div className="tableWrap">
         <table className="adminTable">
-          <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Paid</th><th>Due</th><th>Company share</th><th>Date</th></tr></thead>
+          <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Paid</th><th>Due</th><th>Company share</th><th>Tax</th><th>Date</th></tr></thead>
           <tbody>
-            {dateLoading && selectedDate && <tr><td colSpan="7" className="muted">Loading…</td></tr>}
+            {dateLoading && selectedDate && <tr><td colSpan="8" className="muted">Loading…</td></tr>}
             {!dateLoading && displayOrders.map(o=><tr key={o.id} className="clickableRow" onClick={()=>openAdminOrder(o)}>
               <td>#{o.id.slice(0,8).toUpperCase()}</td>
               <td>{o.customer_name||"—"}<br/><small className="muted">{o.customer_phone}</small></td>
@@ -1618,15 +1620,17 @@ function Admin({user}) {
               <td>{money(o.amount_paid)}</td>
               <td>{money(o.amount_due)}</td>
               <td>{o.status==="completed" ? <b>{money(computeCompanyShare(o))}</b> : "—"}</td>
+              <td>{o.status==="completed" ? money(computeOrderTax(o)) : "—"}</td>
               <td>{new Date(o.created_at).toLocaleDateString()}</td>
             </tr>)}
-            {!dateLoading && !displayOrders.length && <tr><td colSpan="7" className="muted">{statusFilter ? `No ${prettyStatus(statusFilter).toLowerCase()} orders${selectedDate?" on this date":""}.` : selectedDate ? "No orders on this date." : "No orders yet."}</td></tr>}
+            {!dateLoading && !displayOrders.length && <tr><td colSpan="8" className="muted">{statusFilter ? `No ${prettyStatus(statusFilter).toLowerCase()} orders${selectedDate?" on this date":""}.` : selectedDate ? "No orders on this date." : "No orders yet."}</td></tr>}
           </tbody>
           {!dateLoading && displayOrders.length>0 && <tfoot><tr className="totalRow">
             <td colSpan="3">Total ({displayOrders.length} order{displayOrders.length===1?"":"s"})</td>
             <td>{money(displayOrders.reduce((s,o)=>s+Number(o.amount_paid||0),0))}</td>
             <td></td>
             <td>{money(displayOrders.filter(o=>o.status==="completed").reduce((s,o)=>s+computeCompanyShare(o),0))}</td>
+            <td>{money(displayOrders.filter(o=>o.status==="completed").reduce((s,o)=>s+computeOrderTax(o),0))}</td>
             <td></td>
           </tr></tfoot>}
         </table>
