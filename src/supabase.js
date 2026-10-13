@@ -591,7 +591,7 @@ export async function getOrderById(orderId) {
 export async function getAdminOrders(limit = 100) {
   const { data, error } = await supabase
     .from("orders")
-    .select("id, status, customer_name, customer_phone, electrician_id, amount_paid, amount_due, estimated_total, final_total, advance_payment_status, final_payment_status, created_at")
+    .select("id, status, customer_name, customer_phone, electrician_id, amount_paid, amount_due, estimated_total, final_total, advance_amount, customer_services_total, technician_services_total, advance_payment_status, final_payment_status, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -614,7 +614,7 @@ export async function getAdminOrdersByDate(dateStr) {
   const end = new Date(startIst.getTime() + 24*60*60*1000).toISOString();
   const { data, error } = await supabase
     .from("orders")
-    .select("id, status, customer_name, customer_phone, electrician_id, amount_paid, amount_due, estimated_total, final_total, advance_payment_status, final_payment_status, created_at")
+    .select("id, status, customer_name, customer_phone, electrician_id, amount_paid, amount_due, estimated_total, final_total, advance_amount, customer_services_total, technician_services_total, advance_payment_status, final_payment_status, created_at")
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });

@@ -251,6 +251,20 @@ function computeElectricianShare(order) {
   const platformFee = totalEarningExclGst * 0.10;
   return Math.round((totalEarningExclGst - platformFee) * 100) / 100;
 }
+// Company share (admin only): what the company keeps from a completed order.
+// = total paid by the customer
+//   - total tax (5% GST on the service subtotal + the 18% tax component
+//     inside the visiting charge)
+//   - the electrician's share (computeElectricianShare above).
+function computeCompanyShare(order) {
+  const subtotal = Number(order.customer_services_total || 0) + Number(order.technician_services_total || 0);
+  const advance = Number(order.advance_amount || 0);
+  const serviceGst = Math.round(subtotal * 0.05 * 100) / 100;
+  const visitingTax = advance - advance / 1.18;
+  const totalTax = serviceGst + visitingTax;
+  const paid = Number(order.amount_paid || 0);
+  return Math.round((paid - totalTax - computeElectricianShare(order)) * 100) / 100;
+}
 function prettyStatus(s) {
   return String(s || "").replaceAll("_", " ").replace(/\b\w/g, x => x.toUpperCase());
 }
@@ -1594,18 +1608,19 @@ function Admin({user}) {
       </div>
       <div className="tableWrap">
         <table className="adminTable">
-          <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Paid</th><th>Due</th><th>Date</th></tr></thead>
+          <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Paid</th><th>Due</th><th>Company share</th><th>Date</th></tr></thead>
           <tbody>
-            {dateLoading && selectedDate && <tr><td colSpan="6" className="muted">Loading…</td></tr>}
+            {dateLoading && selectedDate && <tr><td colSpan="7" className="muted">Loading…</td></tr>}
             {!dateLoading && displayOrders.map(o=><tr key={o.id} className="clickableRow" onClick={()=>openAdminOrder(o)}>
               <td>#{o.id.slice(0,8).toUpperCase()}</td>
               <td>{o.customer_name||"—"}<br/><small className="muted">{o.customer_phone}</small></td>
               <td>{prettyStatus(o.status)}</td>
               <td>{money(o.amount_paid)}</td>
               <td>{money(o.amount_due)}</td>
+              <td>{o.status==="completed" ? <b>{money(computeCompanyShare(o))}</b> : "—"}</td>
               <td>{new Date(o.created_at).toLocaleDateString()}</td>
             </tr>)}
-            {!dateLoading && !displayOrders.length && <tr><td colSpan="6" className="muted">{statusFilter ? `No ${prettyStatus(statusFilter).toLowerCase()} orders${selectedDate?" on this date":""}.` : selectedDate ? "No orders on this date." : "No orders yet."}</td></tr>}
+            {!dateLoading && !displayOrders.length && <tr><td colSpan="7" className="muted">{statusFilter ? `No ${prettyStatus(statusFilter).toLowerCase()} orders${selectedDate?" on this date":""}.` : selectedDate ? "No orders on this date." : "No orders yet."}</td></tr>}
           </tbody>
         </table>
       </div>
