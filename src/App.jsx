@@ -90,6 +90,12 @@ const HI = {
   "Open that email and tap the link, then come back and sign in.": "वह ईमेल खोलें और लिंक पर टैप करें, फिर यहाँ वापस आकर साइन इन करें।",
   "Can't find it? Check your Spam or Promotions folder. It may take a minute to arrive.": "ईमेल नहीं मिला? अपना स्पैम या प्रमोशन फ़ोल्डर देखें। ईमेल आने में एक मिनट लग सकता है।",
   "Go to sign in": "साइन इन पर जाएँ",
+  "service added": "सेवा जोड़ी गई",
+  "services added": "सेवाएँ जोड़ी गईं",
+  "Cart": "कार्ट",
+  "GST": "जीएसटी",
+  "Remove one": "एक कम करें",
+  "Add one more": "एक और जोड़ें",
   "Please wait…": "कृपया प्रतीक्षा करें…",
   "Sign in": "साइन इन करें",
   "Send reset link": "रीसेट लिंक भेजें",
@@ -471,18 +477,23 @@ function ServiceCard({s, qty, onChange}) {
   // Services flagged price_on_inspection have no fixed price: the electrician
   // enters the amount after seeing the job, so the customer just picks it once.
   const maxQty = s.price_on_inspection ? 1 : Infinity;
-  return <div className="serviceCard">
+  const inCart = qty > 0;
+  return <div className={`serviceCard${inCart ? " inCart" : ""}`}>
     <div>
       <h3>{t(s.name)}</h3>
       {s.price_on_inspection
         ? <div className="price"><span>{t("Price after inspection")}</span></div>
         : <div className="price">{money(s.price)} <span>/ {s.unit || "item"}</span></div>}
     </div>
-    <div className="qty">
-      <button onClick={()=>onChange(Math.max(0,qty-1))}><Minus size={15}/></button>
-      <b>{qty}</b>
-      <button onClick={()=>onChange(Math.min(maxQty,qty+1))}><Plus size={15}/></button>
-    </div>
+    {/* Not in cart yet: a clear "Add" button. Once added it turns into the
+        − qty + stepper; pressing − at 1 removes the service from the cart. */}
+    {inCart
+      ? <div className="qty">
+          <button type="button" aria-label={t("Remove one")} onClick={()=>onChange(Math.max(0,qty-1))}><Minus size={15}/></button>
+          <b>{qty}</b>
+          <button type="button" aria-label={t("Add one more")} disabled={qty>=maxQty} onClick={()=>onChange(Math.min(maxQty,qty+1))}><Plus size={15}/></button>
+        </div>
+      : <button type="button" className="addToCartBtn" onClick={()=>onChange(1)}><Plus size={15}/> {t("Add")}</button>}
   </div>;
 }
 
@@ -1035,6 +1046,18 @@ if (!selectedItems.length) {
             <button className="primary" disabled={!selectedItems.length} onClick={()=>setStep(3)}>{t("Confirm items")}</button>
           </div>
         </aside>
+        {/* Phones only (see .cartBar in styles.css): the bill above sits below
+            the whole service list, so keep the cart and the next step in reach. */}
+        {selectedItems.length>0 && <div className="cartBar" role="region" aria-label={t("Cart")}>
+          <div className="cartBarInfo">
+            <ShoppingCart size={18}/>
+            <div>
+              <b>{selectedItems.reduce((a,x)=>a+x.quantity,0)} {selectedItems.reduce((a,x)=>a+x.quantity,0)===1 ? t("service added") : t("services added")}</b>
+              <span>{money(customerTotal)} + {t("GST")}</span>
+            </div>
+          </div>
+          <button type="button" className="primary" onClick={()=>setStep(3)}>{t("Confirm items")}</button>
+        </div>}
       </div>}
 
       {step===3 && <div className="panel">

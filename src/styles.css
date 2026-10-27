@@ -904,3 +904,37 @@ tr.clickableRow:hover td{ background: var(--paper-raised, #f7f6ef); }
 .inspectionPriceRow{ display:flex; gap:8px; }
 .inspectionPriceRow input{ flex:1; min-width:0; }
 .inspectionPriceRow .primary{ white-space:nowrap; }
+/* =========================================================================
+   Add to cart — service cards and the phone cart bar
+   ========================================================================= */
+.serviceCard.inCart{ border-color: var(--circuit); box-shadow: inset 0 0 0 1px var(--circuit); background: #FBFDFC; }
+.addToCartBtn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  align-self:flex-end; min-width: 84px; padding: 7px 14px;
+  border: 1px solid var(--circuit); border-radius: var(--radius-s);
+  background:#fff; color: var(--circuit); font-weight:600; font-size:13.5px; cursor:pointer;
+}
+.addToCartBtn:hover{ background: var(--circuit-soft); }
+.qty button:disabled{ opacity: .4; cursor: default; }
+
+/* Hidden on wide screens: the bill and "Confirm items" sit beside the list there. */
+.cartBar{ display:none; }
+@media (max-width: 860px){
+  .cartBar{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--paper-raised); border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 16px rgba(18,24,31,0.08);
+  }
+  .cartBarInfo{ display:flex; align-items:center; gap:10px; min-width:0; color: var(--ink); }
+  .cartBarInfo div{ display:flex; flex-direction:column; line-height:1.25; }
+  .cartBarInfo b{ font-size:14px; }
+  .cartBarInfo span{ font-size:12.5px; color: var(--muted); }
+  .cartBar .primary{ white-space:nowrap; flex-shrink:0; }
+  /* Room under the list so the fixed bar never covers the last service or the bill. */
+  .contentGrid:has(.cartBar){ padding-bottom: 76px; }
+}
+@media (max-width: 480px){
+  .addToCartBtn{ min-width: 76px; padding: 8px 12px; }
+}
