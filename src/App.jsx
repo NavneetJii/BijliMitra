@@ -95,6 +95,8 @@ const HI = {
   "Cart": "कार्ट",
   "GST": "जीएसटी",
   "Your cart": "आपका कार्ट",
+  "Selected services": "चुनी गई सेवाएँ",
+  "No services selected yet.": "अभी कोई सेवा नहीं चुनी गई।",
   "Your cart is empty.": "आपका कार्ट खाली है।",
   "Browse services": "सेवाएँ देखें",
   "Remove": "हटाएँ",
@@ -511,7 +513,7 @@ function ServiceCard({s, qty, onChange}) {
   </div>;
 }
 
-function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=true}) {
+function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=true, showItems=false}) {
   const { t } = useLanguage();
   const GST_RATE = 0.05;
   const customerTotal = items.reduce((a,x)=>a + Number(x.price||x.unit_price||0)*Number(x.quantity||1),0);
@@ -521,6 +523,15 @@ function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=
   const total = subtotal + gst;
   const hasUndecided = [...items, ...technicianItems].some(x=>Number(x.price ?? x.unit_price ?? 0)===0);
   return <div className="billBox">
+    {/* Booking flow only: list each selected service before the totals. */}
+    {showItems && items.length>0 && <div className="billItems">
+      <div className="billItemsHead">{t("Selected services")}</div>
+      {items.map((x,i)=><div className="billItem" key={x.id||i}>
+        <span className="billItemName">{t(x.name)} <span className="billItemQty">× {x.quantity}</span></span>
+        <b>{money(Number(x.price||0)*Number(x.quantity||1))}</b>
+      </div>)}
+    </div>}
+    {showItems && items.length===0 && <div className="billItems billItemsEmpty">{t("No services selected yet.")}</div>}
     <div className="billRow"><span>{t("Base Service Pack")}</span><b>{money(customerTotal)}</b></div>
     {technicianItems.length>0 && <div className="billRow"><span>{t("Technician Added Services")}</span><b>{money(techTotal)}</b></div>}
     <div className="billRow"><span>{t("GST (5%)")}</span><b>{money(gst)}</b></div>
@@ -1066,7 +1077,7 @@ if (!selectedItems.length) {
           </div>
         </main>
         <aside className="sticky">
-          <BillBox items={selectedItems} paid={false}/>
+          <BillBox items={selectedItems} paid={false} showItems/>
           <div className="wizardNav">
             <button className="secondary" onClick={()=>setStep(1)}><ChevronLeft size={16}/> {t("Back")}</button>
             <button className="primary" disabled={!selectedItems.length} onClick={()=>setStep(3)}>{t("Confirm items")}</button>
@@ -1116,7 +1127,7 @@ if (!selectedItems.length) {
 
       {step===4 && <div className="panel">
         <div className="sectionHead"><div><h2>{t("Review & confirm")}</h2><p>{t("Check everything before paying your visiting charge.")}</p></div></div>
-        <BillBox items={selectedItems} paid={false}/>
+        <BillBox items={selectedItems} paid={false} showItems/>
         <div className="termsBox">
           <h3>{t("Terms & conditions")}</h3>
           <ul>
