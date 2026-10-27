@@ -540,7 +540,9 @@ const POPULAR_SERVICES = [
   { match: "Inverter installation (without wiring)", image: "/popular/inverter.jpg", icon: "🔋", label: "Inverter installation" }
 ];
 
-const FESTIVE_SERVICE_NAME = "Decorative light installation"; // service the festive banner opens in the booking flow
+// The festive banner opens the booking flow with this category expanded, so the
+// customer can choose "Decorative light installation for house" or "...for shop".
+const FESTIVE_CATEGORY = "Lights & LEDs";
 
 function readProfileCache(id){ try{ const c=JSON.parse(localStorage.getItem("bijlimitra_profile_"+id)||"null"); return c&&c.id===id?c:null; }catch(e){ return null; } }
 function writeProfileCache(id,p){ try{ localStorage.setItem("bijlimitra_profile_"+id, JSON.stringify(p)); }catch(e){} }
@@ -735,8 +737,8 @@ const popularServices = useMemo(()=>POPULAR_SERVICES
   .map(p=>({ ...p, service: services.find(s=>s.name===p.match) }))
   .filter(p=>p.service), [services]);
 function openFestive(){
-  const svc = services.find(x=>x.name===FESTIVE_SERVICE_NAME);
-  if(svc){ pickPopular(svc); } else { setTab("book"); setStep(2); }
+  setOpenCategories(o=>({ ...o, [FESTIVE_CATEGORY]: true }));
+  setTab("book"); setStep(2);
 }
 function pickPopular(s){
   setCart(c=>({ ...c, [s.id]: Math.max(1, c[s.id]||0) }));
