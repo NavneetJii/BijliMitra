@@ -740,8 +740,9 @@ function openFestive(){
   setOpenCategories(o=>({ ...o, [FESTIVE_CATEGORY]: true }));
   setTab("book"); setStep(2);
 }
+// Tapping a popular service only opens its category in the booking flow --
+// nothing is added to the cart, so the customer picks the exact service.
 function pickPopular(s){
-  setCart(c=>({ ...c, [s.id]: Math.max(1, c[s.id]||0) }));
   setOpenCategories(o=>({ ...o, [s.category || "Other Services"]: true }));
   setTab("book"); setStep(2);
 }
