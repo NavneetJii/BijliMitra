@@ -938,3 +938,45 @@ tr.clickableRow:hover td{ background: var(--paper-raised, #f7f6ef); }
 @media (max-width: 480px){
   .addToCartBtn{ min-width: 76px; padding: 8px 12px; }
 }
+
+/* ---------- header cart button + cart modal ---------- */
+.cartBtn{
+  position: relative; display:flex; align-items:center; justify-content:center;
+  width: 38px; height: 34px; border-radius: var(--radius-s);
+  background: transparent; border: 1px solid #3A4453; color:#fff; cursor:pointer;
+}
+.cartBtn:hover{ border-color: var(--live); background: rgba(242,183,5,0.08); }
+.cartCount{
+  position:absolute; top:-7px; right:-7px; min-width: 19px; height: 19px; padding: 0 5px;
+  border-radius: 999px; background: var(--live); color: var(--live-ink);
+  font-size: 11px; font-weight: 700; line-height: 19px; text-align:center;
+  border: 2px solid var(--ink);
+}
+.cartModal.modal{ max-width: 520px; }
+.cartEmpty{ display:flex; flex-direction:column; align-items:center; gap: 10px; padding: 18px 0 4px; color: var(--muted); text-align:center; }
+.cartList{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+.cartItem{ display:flex; justify-content:space-between; align-items:center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.cartItem:first-child{ padding-top: 0; }
+.cartItemInfo{ display:flex; flex-direction:column; gap: 3px; min-width:0; }
+.cartItemInfo b{ font-size: 14px; line-height:1.3; }
+.cartItemInfo span{ font-size: 12.5px; color: var(--muted); }
+.cartItemActions{ display:flex; align-items:center; gap: 12px; flex-shrink:0; }
+.cartItemTotal{ min-width: 72px; text-align:right; font-variant-numeric: tabular-nums; font-size: 14px; }
+.cartRemove{
+  display:flex; align-items:center; justify-content:center; width: 32px; height: 32px;
+  border: 1px solid var(--line); border-radius: var(--radius-s); background:#fff;
+  color: var(--danger); cursor:pointer;
+}
+.cartRemove:hover{ background: var(--danger-soft); border-color: var(--danger); }
+.cartTotals{ padding-top: 14px; }
+.cartTotals > div{ display:flex; justify-content:space-between; font-size: 15px; }
+.cartTotals p{ margin: 6px 0 0; font-size: 12.5px; }
+.cartActions{ display:flex; gap: 10px; margin-top: 16px; }
+.cartActions button{ flex:1; }
+.cartBar{ z-index: 30; }
+@media (max-width: 480px){
+  .cartItem{ flex-direction: column; align-items: stretch; gap: 8px; }
+  .cartItemActions{ justify-content: space-between; }
+  .cartActions{ flex-direction: column-reverse; }
+  .cartBtn{ width: 38px; height: 38px; }
+}

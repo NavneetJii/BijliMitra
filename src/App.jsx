@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import {
   Zap, MapPin, ShoppingCart, User, LogOut, ClipboardList,
   Plus, Minus, CheckCircle2, Clock3, Wrench, CreditCard,
-  ShieldCheck, ChevronRight, ChevronLeft, ChevronDown, X, RefreshCw, Wallet, Eye, EyeOff, Lock, Pencil, Check, Star, Phone
+  ShieldCheck, ChevronRight, ChevronLeft, ChevronDown, X, RefreshCw, Wallet, Eye, EyeOff, Lock, Pencil, Check, Star, Phone, Trash2
 } from "lucide-react";
 import {
   supabase, supabaseConfigured, currentUser, signIn, signUp, signOut, signInWithGoogle,
@@ -94,6 +94,15 @@ const HI = {
   "services added": "सेवाएँ जोड़ी गईं",
   "Cart": "कार्ट",
   "GST": "जीएसटी",
+  "Your cart": "आपका कार्ट",
+  "Your cart is empty.": "आपका कार्ट खाली है।",
+  "Browse services": "सेवाएँ देखें",
+  "Remove": "हटाएँ",
+  "Close": "बंद करें",
+  "Services total": "सेवाओं का कुल",
+  "5% GST is added on the bill. The ₹51 visiting charge is paid separately when you book.": "बिल पर 5% जीएसटी जोड़ा जाता है। ₹51 विज़िटिंग चार्ज बुकिंग के समय अलग से देना होता है।",
+  "Add more services": "और सेवाएँ जोड़ें",
+  "Continue booking": "बुकिंग जारी रखें",
   "Remove one": "एक कम करें",
   "Add one more": "एक और जोड़ें",
   "Please wait…": "कृपया प्रतीक्षा करें…",
@@ -301,11 +310,16 @@ function istDateString(offsetDays = 0) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
-function Header({ user, profile, role, onLogout, onLogin, onSignup }) {
+function Header({ user, profile, role, onLogout, onLogin, onSignup, showCart = false, cartCount = 0, onOpenCart }) {
   const { lang, toggleLang, t } = useLanguage();
   return <header className="topbar">
     <div className="brand"><span className="brandIcon"><Zap size={21}/></span><span className="brandText"><span className="brandName" aria-label="BijliMitraService"><span className="bnBijli">Bijli</span><span className="bnMitra">Mitra</span><span className="bnService">Service</span></span><span className="brandTagline">{t("Serving the Rural India")}</span></span></div>
     <div className="topActions">
+      {/* Cart: shown to customers (and guests) on every page, laptop and phone. */}
+      {showCart && <button type="button" className="cartBtn" onClick={onOpenCart} title={t("Cart")} aria-label={`${t("Cart")}: ${cartCount}`}>
+        <ShoppingCart size={18}/>
+        {cartCount>0 && <span className="cartCount">{cartCount>99 ? "99+" : cartCount}</span>}
+      </button>}
       <button className="langToggle" onClick={toggleLang} title="Switch language">
         <span className={lang==="en"?"active":""}>EN</span>
         <span className={lang==="hi"?"active":""}>हिं</span>
@@ -706,7 +720,7 @@ function ReviewsTab({user}) {
   </div>;
 }
 
-function Customer({user, profile, onRequireAuth}) {
+function Customer({user, profile, onRequireAuth, cartOpenRequest = 0, onCartCountChange}) {
   const { t } = useLanguage();
   const [services,setServices]=useState(()=>readServicesCache()||fallbackServices), [locations,setLocations]=useState([]), [orders,setOrders]=useState([]);
   const [servicesLive,setServicesLive]=useState(()=>Boolean(readServicesCache()));
@@ -721,6 +735,9 @@ const [bookingError,setBookingError]=useState("");
 const [showLoginPrompt,setShowLoginPrompt]=useState(false);
 const [draftLoc,setDraftLoc]=useState(null);
 const [openCategories,setOpenCategories]=useState({});
+const [cartOpen,setCartOpen]=useState(false);
+// The header's cart button lives in App; each click bumps cartOpenRequest.
+useEffect(()=>{ if(cartOpenRequest) setCartOpen(true); }, [cartOpenRequest]);
 const [editingPhone,setEditingPhone]=useState(false);
 const [phoneDraft,setPhoneDraft]=useState(profile?.phone||"");
 const [phoneValue,setPhoneValue]=useState(profile?.phone||"");
@@ -852,6 +869,15 @@ const servicesByCategory = useMemo(()=>{
   }, [user, selectedOrder?.id]);
   const selectedItems=useMemo(()=>services.filter(s=>!s.price_on_inspection && cart[s.id]>0).map(s=>({...s,quantity:cart[s.id]})),[services,cart]);
   const customerTotal=selectedItems.reduce((a,x)=>a+x.price*x.quantity,0);
+  const cartQty=selectedItems.reduce((a,x)=>a+x.quantity,0);
+  useEffect(()=>{ onCartCountChange?.(cartQty); }, [cartQty]);
+  function setQty(id, q){
+    setCart(c=>{ const n={...c}; if(q>0) n[id]=q; else delete n[id]; return n; });
+  }
+  function continueFromCart(){
+    setCartOpen(false); setTab("book");
+    setStep(selectedItems.length ? 3 : 2);
+  }
 
   async function placeOrder(){
     console.log("PLACE ORDER FUNCTION CLICKED");
@@ -1034,7 +1060,7 @@ if (!selectedItems.length) {
                     <ChevronDown size={16} className={isOpen?"chevronOpen":""}/>
                   </span>
                 </button>
-                {isOpen && <div className="serviceGrid">{catServices.map(s=><ServiceCard key={s.id} s={s} qty={cart[s.id]||0} onChange={q=>setCart({...cart,[s.id]:q})}/>)}</div>}
+                {isOpen && <div className="serviceGrid">{catServices.map(s=><ServiceCard key={s.id} s={s} qty={cart[s.id]||0} onChange={q=>setQty(s.id,q)}/>)}</div>}
               </div>;
             })}
           </div>
@@ -1052,7 +1078,7 @@ if (!selectedItems.length) {
           <div className="cartBarInfo">
             <ShoppingCart size={18}/>
             <div>
-              <b>{selectedItems.reduce((a,x)=>a+x.quantity,0)} {selectedItems.reduce((a,x)=>a+x.quantity,0)===1 ? t("service added") : t("services added")}</b>
+              <b>{cartQty} {cartQty===1 ? t("service added") : t("services added")}</b>
               <span>{money(customerTotal)} + {t("GST")}</span>
             </div>
           </div>
@@ -1170,6 +1196,42 @@ if (!selectedItems.length) {
       <div className="panel"><div className="sectionHead"><h2>{t("Saved locations")}</h2><button className="secondary" onClick={()=>setLocModal(true)}><Plus size={16}/> {t("Add")}</button></div>{locations.map(l=><div className="locationRow" key={l.id}><MapPin size={17}/><div><b>{l.landmark}</b><span>{l.city}, {l.district}, {l.state} — {l.pincode}{l.location_url && <> · <a href={l.location_url} target="_blank" rel="noreferrer">{t("View shared location")}</a></>}</span></div></div>)}{!locations.length&&<p className="muted">{t("No saved locations.")}</p>}</div>
     </div>}
     {locModal&&<LocationModal userId={user?.id} onClose={()=>setLocModal(false)} onSaved={x=>{ if(user){setLocations([x,...locations]);setLocationId(x.id)} else { setDraftLoc(x); } }}/>}
+    {cartOpen && <div className="modalBackdrop" onClick={()=>setCartOpen(false)}>
+      <div className="modal cartModal" role="dialog" aria-label={t("Your cart")} onClick={e=>e.stopPropagation()}>
+        <div className="modalHead"><h2>{t("Your cart")}</h2><button className="iconBtn" onClick={()=>setCartOpen(false)} aria-label={t("Close")}><X/></button></div>
+        {selectedItems.length===0 ? <div className="cartEmpty">
+          <ShoppingCart size={34}/>
+          <p>{t("Your cart is empty.")}</p>
+          <button className="primary full" onClick={()=>{ setCartOpen(false); setTab("book"); setStep(2); }}>{t("Browse services")}</button>
+        </div> : <>
+          <ul className="cartList">
+            {selectedItems.map(s=><li key={s.id} className="cartItem">
+              <div className="cartItemInfo">
+                <b>{t(s.name)}</b>
+                <span>{money(s.price)} / {s.unit || "item"}</span>
+              </div>
+              <div className="cartItemActions">
+                <div className="qty">
+                  <button type="button" aria-label={t("Remove one")} onClick={()=>setQty(s.id, s.quantity-1)}><Minus size={15}/></button>
+                  <b>{s.quantity}</b>
+                  <button type="button" aria-label={t("Add one more")} onClick={()=>setQty(s.id, s.quantity+1)}><Plus size={15}/></button>
+                </div>
+                <b className="cartItemTotal">{money(s.price*s.quantity)}</b>
+                <button type="button" className="cartRemove" onClick={()=>setQty(s.id, 0)} aria-label={`${t("Remove")}: ${t(s.name)}`} title={t("Remove")}><Trash2 size={16}/></button>
+              </div>
+            </li>)}
+          </ul>
+          <div className="cartTotals">
+            <div><span>{t("Services total")}</span><b>{money(customerTotal)}</b></div>
+            <p className="muted">{t("5% GST is added on the bill. The ₹51 visiting charge is paid separately when you book.")}</p>
+          </div>
+          <div className="cartActions">
+            <button className="secondary" onClick={()=>{ setCartOpen(false); setTab("book"); setStep(2); }}>{t("Add more services")}</button>
+            <button className="primary" onClick={continueFromCart}>{t("Continue booking")}</button>
+          </div>
+        </>}
+      </div>
+    </div>}
     {showLoginPrompt && <div className="modalBackdrop" onClick={()=>setShowLoginPrompt(false)}>
       <div className="modal loginPromptModal" onClick={e=>e.stopPropagation()}>
         <div className="modalHead"><h2>{t("Login or Sign up to continue")}</h2><button className="iconBtn" onClick={()=>setShowLoginPrompt(false)}><X/></button></div>
@@ -1824,6 +1886,10 @@ function App() {
 
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("login");
+  // Cart lives inside <Customer>; the header only needs the item count and a
+  // way to ask Customer to open the cart (a counter bumped on each click).
+  const [cartCount, setCartCount] = useState(0);
+  const [cartOpenRequest, setCartOpenRequest] = useState(0);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   async function loadUser(){
     setLoading(true);
@@ -1883,6 +1949,7 @@ function App() {
   // toggle. An electrician account only ever sees the electrician console;
   // a customer account only ever sees the booking storefront.
   const effectiveRole = profile?.role === "electrician" ? "electrician" : profile?.role === "admin" ? "admin" : "customer";
+  const showCustomerApp = !showAuth && !((effectiveRole === "electrician" || effectiveRole === "admin") && user);
 
 return (
  <>
@@ -1911,6 +1978,10 @@ return (
         setAuthMode("signup");
         setShowAuth(true);
       }}
+
+      showCart={showCustomerApp}
+      cartCount={cartCount}
+      onOpenCart={() => setCartOpenRequest(n => n + 1)}
     />
 
     {!supabaseConfigured && (
@@ -1952,6 +2023,9 @@ return (
           setAuthMode(mode);
           setShowAuth(true);
         }}
+
+        cartOpenRequest={cartOpenRequest}
+        onCartCountChange={setCartCount}
       />
 
     )}
