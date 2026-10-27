@@ -86,6 +86,10 @@ const HI = {
   "← Back to sign in": "← साइन इन पर वापस जाएँ",
   "New customer? Create account": "नए ग्राहक हैं? खाता बनाएँ",
   "Already have an account? Sign in": "पहले से खाता है? साइन इन करें",
+  "Account created! We've sent a confirmation link to": "खाता बन गया! हमने पुष्टि (कन्फ़र्मेशन) लिंक भेजा है:",
+  "Open that email and tap the link, then come back and sign in.": "वह ईमेल खोलें और लिंक पर टैप करें, फिर यहाँ वापस आकर साइन इन करें।",
+  "Can't find it? Check your Spam or Promotions folder. It may take a minute to arrive.": "ईमेल नहीं मिला? अपना स्पैम या प्रमोशन फ़ोल्डर देखें। ईमेल आने में एक मिनट लग सकता है।",
+  "Go to sign in": "साइन इन पर जाएँ",
   "Please wait…": "कृपया प्रतीक्षा करें…",
   "Sign in": "साइन इन करें",
   "Send reset link": "रीसेट लिंक भेजें",
@@ -328,12 +332,17 @@ function Auth({ onDone,onBackHome ,initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode);
   useEffect(() => {
   setMode(initialMode);
+  setSignupSentTo("");
   }, [initialMode]);
   const [form, setForm] = useState({email:"",password:"",confirmPassword:"",fullName:"",phone:""});
   const [busy,setBusy]=useState(false); const [err,setErr]=useState("");
   const [showPassword,setShowPassword]=useState(false);
   const [showConfirmPassword,setShowConfirmPassword]=useState(false);
   const [resetSent,setResetSent]=useState(false);
+  // Email the account was just created with, while it waits for the customer
+  // to click the confirmation link. Shown as a green notice (not an error).
+  const [signupSentTo,setSignupSentTo]=useState("");
+  const showSignupSent = mode === "signup" && !!signupSentTo;
   async function submit(e) {
     e.preventDefault(); setBusy(true); setErr("");
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -361,7 +370,7 @@ function Auth({ onDone,onBackHome ,initialMode = "login" }) {
         : await signUp(form.email, form.password, form.fullName, form.phone);
       if (r.error) throw r.error;
       if (mode === "signup" && !r.data?.session) {
-        setErr("Account created. If email confirmation is enabled, confirm your email and then sign in.");
+        setSignupSentTo(form.email.trim());
       } else onDone();
     } catch(e) { setErr(errorText(e)); } finally { setBusy(false); }
   }
@@ -375,6 +384,18 @@ function Auth({ onDone,onBackHome ,initialMode = "login" }) {
         <div className="noticeBox">
           Check your inbox at <b>{form.email}</b> for a password reset link. It may take a minute to arrive.
         </div>
+      ) : showSignupSent ? (
+        <>
+          <div className="noticeBox">
+            <p style={{margin:0}}>{t("Account created! We've sent a confirmation link to")} <b>{signupSentTo}</b></p>
+            <p style={{margin:"8px 0 0"}}>{t("Open that email and tap the link, then come back and sign in.")}</p>
+            <p style={{margin:"8px 0 0", fontSize:"12.5px"}}>{t("Can't find it? Check your Spam or Promotions folder. It may take a minute to arrive.")}</p>
+          </div>
+          <button type="button" className="primary full" style={{marginTop:"16px"}} onClick={()=>{
+            setForm({...form, password:"", confirmPassword:""});
+            setSignupSentTo(""); setErr(""); setMode("login");
+          }}>{t("Go to sign in")}</button>
+        </>
       ) : (
         <form onSubmit={submit}>
           {mode==="signup" && <>
@@ -404,7 +425,7 @@ function Auth({ onDone,onBackHome ,initialMode = "login" }) {
         </form>
       )}
 
-      {mode!=="forgot" && (
+      {mode!=="forgot" && !showSignupSent && (
         <>
           <div className="authDivider"><span>{t("or")}</span></div>
           <button type="button" className="googleBtn" disabled={busy} onClick={async()=>{
@@ -421,7 +442,7 @@ function Auth({ onDone,onBackHome ,initialMode = "login" }) {
       {mode==="forgot" ? (
         <button className="linkBtn" onClick={()=>{setMode("login");setErr("");setResetSent(false)}}>{t("← Back to sign in")}</button>
       ) : (
-        <button className="linkBtn" onClick={()=>{setMode(mode==="login"?"signup":"login");setErr("")}}>
+        <button className="linkBtn" onClick={()=>{setMode(mode==="login"?"signup":"login");setErr("");setSignupSentTo("")}}>
           {mode==="login" ? t("New customer? Create account") : t("Already have an account? Sign in")}
         </button>
       )}
