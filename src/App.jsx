@@ -96,6 +96,8 @@ const HI = {
   "GST": "जीएसटी",
   "Your cart": "आपका कार्ट",
   "Selected services": "चुनी गई सेवाएँ",
+  "Amount Paid": "भुगतान की गई राशि",
+  "Paid": "भुगतान हो गया",
   "No services selected yet.": "अभी कोई सेवा नहीं चुनी गई।",
   "Your cart is empty.": "आपका कार्ट खाली है।",
   "Browse services": "सेवाएँ देखें",
@@ -513,7 +515,9 @@ function ServiceCard({s, qty, onChange}) {
   </div>;
 }
 
-function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=true, showItems=false}) {
+// settled: the final payment has been received (order completed), so the
+// bottom line shows "Amount Paid" instead of an outstanding "Amount Due".
+function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=true, showItems=false, settled=false}) {
   const { t } = useLanguage();
   const GST_RATE = 0.05;
   const customerTotal = items.reduce((a,x)=>a + Number(x.price||x.unit_price||0)*Number(x.quantity||1),0);
@@ -538,7 +542,9 @@ function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=
     {hasUndecided && <div className="cancelNote">{t("Includes an item whose price will be decided by the electrician after inspection.")}</div>}
     <div className="billRow strong"><span>{final ? t("Final Total Work Amount") : t("Estimated Total Work Amount")}</span><b>{money(total)}</b></div>
     <div className="billRow token"><span>{paid ? t("Visiting Charge Paid (incl. GST)") : t("Visiting Charge (to be paid next, incl. GST)")}</span><b>{money(advance)}</b></div>
-    <div className="billDue"><span>{t("Amount Due")}</span><strong>{money(total)}</strong></div>
+    {settled
+      ? <div className="billDue billPaid"><span>{t("Amount Paid")} <span className="paidBadge"><CheckCircle2 size={14}/> {t("Paid")}</span></span><strong>{money(total)}</strong></div>
+      : <div className="billDue"><span>{t("Amount Due")}</span><strong>{money(total)}</strong></div>}
     <div className="cancelNote">{paid
       ? t("The {amount} visiting charge is non-refundable and is a separate charge — it is NOT adjusted against the amount due above.").replace("{amount}", money(advance))
       : t("You'll pay a {amount} visiting charge separately on the next step to confirm your slot. It's non-refundable and will NOT be adjusted against the amount due above.").replace("{amount}", money(advance))}</div>
@@ -1162,7 +1168,7 @@ if (!selectedItems.length) {
         <div className="addressBox"><MapPin size={18}/><span>{selectedOrder.landmark}, {selectedOrder.city}, {selectedOrder.district}, {selectedOrder.state} — {selectedOrder.pincode}{selectedOrder.location_url && <> · <a href={selectedOrder.location_url} target="_blank" rel="noreferrer">{t("Open shared location")}</a></>}</span></div>
         <PinBox pins={pins}/>
         <h3>{t("Services")}</h3>{items.map(i=><div className="miniRow" key={i.id}><span>{i.service_name} × {i.quantity}</span><b>{Number(i.unit_price)===0 ? t("To be decided") : money(i.total_price ?? i.unit_price*i.quantity)}</b></div>)}
-        <BillBox items={items.filter(i=>i.source==="customer").map(i=>({price:i.unit_price,quantity:i.quantity}))} technicianItems={items.filter(i=>i.source==="technician").map(i=>({price:i.unit_price,quantity:i.quantity}))} advance={selectedOrder.advance_amount} final={Boolean(selectedOrder.final_total)}/>
+        <BillBox items={items.filter(i=>i.source==="customer").map(i=>({price:i.unit_price,quantity:i.quantity}))} technicianItems={items.filter(i=>i.source==="technician").map(i=>({price:i.unit_price,quantity:i.quantity}))} advance={selectedOrder.advance_amount} final={Boolean(selectedOrder.final_total)} settled={selectedOrder.status==="completed" || selectedOrder.final_payment_status==="paid"}/>
         {selectedOrder.status==="completed" && <OrderReview order={selectedOrder}/>}
         {selectedOrder.status==="final_bill_pending" && <button className="primary full" disabled={busy} onClick={confirmBill}>{busy?t("Confirming…"):t("Confirm final bill")}</button>}
         {selectedOrder.status==="final_payment_pending" && <button className="primary full" disabled={busy} onClick={async()=>{
@@ -1811,6 +1817,7 @@ function Admin({user}) {
             technicianItems={adminOrderItems.filter(i=>i.source==="technician").map(i=>({price:i.unit_price,quantity:i.quantity}))}
             advance={selectedAdminOrder.advance_amount}
             final={Boolean(selectedAdminOrder.final_total)}
+            settled={selectedAdminOrder.status==="completed" || selectedAdminOrder.final_payment_status==="paid"}
           />
           <h3>Status history</h3>
           <div className="timeline">{adminOrderHistory.map((h,i)=><div className="timelineRow" key={h.id||i}><span className="dot"></span><div><b>{prettyStatus(h.status)}</b><p>{h.note}</p><small>{new Date(h.created_at).toLocaleString()}</small></div></div>)}</div>
