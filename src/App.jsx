@@ -17,7 +17,7 @@ import {
   getAdminPendingOrders, routeOrderToElectrician, unrouteOrder,
   requestPasswordReset, updatePassword, getOrderById, createElectrician,
   updateOwnPhone, adminUpdateElectricianPhone,
-  recordSiteVisit, getVisitorStats,
+  recordSiteVisit, getVisitorStats, getAppSetting, setAppSetting,
   replaceCustomerService,
   addReview, getOrderReview, getMyReviews, getAdminReviews, setReviewStatus
 } from "./supabase";
@@ -135,6 +135,8 @@ const HI = {
   "The {amount} visiting charge is non-refundable and is a separate charge — it is NOT adjusted against the amount due above.": "{amount} का विज़िटिंग चार्ज गैर-वापसी योग्य है और एक अलग शुल्क है — यह ऊपर दी गई देय राशि में समायोजित नहीं किया जाता है।",
   "You'll pay a {amount} visiting charge separately on the next step to confirm your slot. It's non-refundable and will NOT be adjusted against the amount due above.": "आप अपनी बुकिंग पक्की करने के लिए अगले चरण में अलग से {amount} का विज़िटिंग चार्ज भरेंगे। यह गैर-वापसी योग्य है और ऊपर दी गई देय राशि में समायोजित नहीं किया जाएगा।",
   "Share these PINs only when asked": "इन पिन को केवल पूछे जाने पर ही साझा करें",
+  "Share this PIN only when asked": "यह पिन केवल पूछे जाने पर ही साझा करें",
+  "Give this PIN to your electrician once they arrive.": "इलेक्ट्रीशियन के पहुँचने पर यह पिन उन्हें दें।",
   "Work Start PIN": "कार्य शुरू पिन",
   "Work Completed PIN": "कार्य पूर्ण पिन",
   "Give the Start PIN to your electrician once they arrive. Give the Completed PIN only after the work is fully done.": "इलेक्ट्रीशियन के पहुँचने पर उन्हें स्टार्ट पिन दें। पूर्ण पिन केवल तभी दें जब कार्य पूरी तरह से हो जाए।",
@@ -551,9 +553,16 @@ function BillBox({items, technicianItems=[], advance=ADVANCE, final=false, paid=
   </div>;
 }
 
-function PinBox({pins}) {
+// showCompleted=false when the admin "skip bill confirmation" switch is ON:
+// the Work Completed PIN is never asked for then, so only the Start PIN shows.
+function PinBox({pins, showCompleted = true}) {
   const { t } = useLanguage();
   if (!pins) return null;
+  if (!showCompleted) return <div className="pinBox">
+    <div className="pinBoxHead"><ShieldCheck size={16}/> {t("Share this PIN only when asked")}</div>
+    <div className="pinRow"><span>{t("Work Start PIN")}</span><b>{pins.start_pin}</b></div>
+    <p className="pinNote">{t("Give this PIN to your electrician once they arrive.")}</p>
+  </div>;
   return <div className="pinBox">
     <div className="pinBoxHead"><ShieldCheck size={16}/> {t("Share these PINs only when asked")}</div>
     <div className="pinRow"><span>{t("Work Start PIN")}</span><b>{pins.start_pin}</b></div>
@@ -753,6 +762,9 @@ const [showLoginPrompt,setShowLoginPrompt]=useState(false);
 const [draftLoc,setDraftLoc]=useState(null);
 const [openCategories,setOpenCategories]=useState({});
 const [cartOpen,setCartOpen]=useState(false);
+// Admin switch: when ON the Work Completed PIN is never used, so it's hidden.
+const [skipBillConfirmation,setSkipBillConfirmation]=useState(false);
+useEffect(()=>{ let on=true; getAppSetting("skip_bill_confirmation", false).then(v=>{ if(on) setSkipBillConfirmation(v===true); }); return ()=>{ on=false; }; }, []);
 // The header's cart button lives in App; each click bumps cartOpenRequest.
 useEffect(()=>{ if(cartOpenRequest) setCartOpen(true); }, [cartOpenRequest]);
 const [editingPhone,setEditingPhone]=useState(false);
@@ -1166,7 +1178,7 @@ if (!selectedItems.length) {
         <div className="timeline">{history.map((h,i)=><div className="timelineRow" key={h.id||i}><span className="dot"></span><div><b>{t(prettyStatus(h.status))}</b><p>{h.note}</p><small>{new Date(h.created_at).toLocaleString()}</small></div></div>)}</div>
         {selectedOrder.electrician && <div className="addressBox"><User size={18}/><span>{t("Your electrician:")} <b>{selectedOrder.electrician.full_name || t("Assigned")}</b></span></div>}
         <div className="addressBox"><MapPin size={18}/><span>{selectedOrder.landmark}, {selectedOrder.city}, {selectedOrder.district}, {selectedOrder.state} — {selectedOrder.pincode}{selectedOrder.location_url && <> · <a href={selectedOrder.location_url} target="_blank" rel="noreferrer">{t("Open shared location")}</a></>}</span></div>
-        <PinBox pins={pins}/>
+        <PinBox pins={pins} showCompleted={!skipBillConfirmation}/>
         <h3>{t("Services")}</h3>{items.map(i=><div className="miniRow" key={i.id}><span>{i.service_name} × {i.quantity}</span><b>{Number(i.unit_price)===0 ? t("To be decided") : money(i.total_price ?? i.unit_price*i.quantity)}</b></div>)}
         <BillBox items={items.filter(i=>i.source==="customer").map(i=>({price:i.unit_price,quantity:i.quantity}))} technicianItems={items.filter(i=>i.source==="technician").map(i=>({price:i.unit_price,quantity:i.quantity}))} advance={selectedOrder.advance_amount} final={Boolean(selectedOrder.final_total)} settled={selectedOrder.status==="completed" || selectedOrder.final_payment_status==="paid"}/>
         {selectedOrder.status==="completed" && <OrderReview order={selectedOrder}/>}
@@ -1488,6 +1500,22 @@ function Admin({user}) {
   const [visitorStats,setVisitorStats]=useState([]);
   const [reviews,setReviews]=useState([]), [reviewFilter,setReviewFilter]=useState("all"), [reviewBusy,setReviewBusy]=useState(null);
   const [visitorDateFilter,setVisitorDateFilter]=useState("");
+  // Workflow switch (app_settings.skip_bill_confirmation). null = still loading.
+  const [skipBill,setSkipBill]=useState(null);
+  const [skipBillBusy,setSkipBillBusy]=useState(false);
+  const [skipBillErr,setSkipBillErr]=useState("");
+  useEffect(()=>{ let on=true; getAppSetting("skip_bill_confirmation", false).then(v=>{ if(on) setSkipBill(v===true); }); return ()=>{ on=false; }; }, []);
+  async function toggleSkipBill(){
+    const next = !skipBill;
+    const ok = window.confirm(next
+      ? "Turn ON: after the electrician generates the final bill, the order goes straight to final payment. Customers will NOT confirm the bill and the Work Completed PIN will NOT be used. Continue?"
+      : "Turn OFF: go back to the normal flow (customer confirms the final bill, then the electrician enters the Work Completed PIN). Continue?");
+    if(!ok) return;
+    setSkipBillBusy(true); setSkipBillErr("");
+    try{ const v = await setAppSetting("skip_bill_confirmation", next); setSkipBill(v===true); }
+    catch(e){ setSkipBillErr(errorText(e)); }
+    finally{ setSkipBillBusy(false); }
+  }
 
   async function saveElectricianPhone(electricianId){
     const trimmed = electricianPhoneDraft.trim();
@@ -1615,6 +1643,23 @@ function Admin({user}) {
   return <div className="page">
     <section className="dashHeader"><div><h1>Admin dashboard</h1><p>Payments, electrician status, and recent orders across the platform.</p></div></section>
     {msg && <div className="notice">{msg}</div>}
+
+    <div className="panel adminSection workflowSetting">
+      <div className="sectionHead">
+        <div>
+          <h2>Order workflow</h2>
+          <p>Skip customer bill confirmation and the Work Completed PIN. When ON, the order goes straight to final payment (QR, online or cash) as soon as the electrician generates the final bill, and customers only see the Work Start PIN. Orders already waiting for bill confirmation or the Completed PIN finish the normal way.</p>
+        </div>
+        <button type="button" role="switch" aria-checked={skipBill===true} className={`switchBtn ${skipBill?"on":""}`} disabled={skipBill===null||skipBillBusy} onClick={toggleSkipBill}>
+          <span className="switchTrack"><span className="switchThumb"/></span>
+          <span className="switchLabel">{skipBill===null ? "Loading…" : skipBillBusy ? "Saving…" : skipBill ? "ON" : "OFF"}</span>
+        </button>
+      </div>
+      <p className={`workflowState ${skipBill?"on":""}`}>{skipBill
+        ? "Current flow: Start PIN → work → final bill → final payment."
+        : "Current flow: Start PIN → work → final bill → customer confirms bill → Completed PIN → final payment."}</p>
+      {skipBillErr && <div className="errorBox">{skipBillErr}</div>}
+    </div>
 
     <div className="panel adminSection">
       <div className="sectionHead">

@@ -997,3 +997,27 @@ tr.clickableRow:hover td{ background: var(--paper-raised, #f7f6ef); }
   padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
   background: var(--circuit-soft); color: var(--circuit);
 }
+
+/* ---------- admin: order workflow switch ---------- */
+.workflowSetting .sectionHead{ align-items:flex-start; gap: 16px; }
+.workflowSetting .sectionHead p{ max-width: 620px; }
+.switchBtn{
+  display:inline-flex; align-items:center; gap: 10px; flex-shrink:0;
+  background: transparent; border: none; cursor: pointer; padding: 4px 0;
+  font-weight: 700; font-size: 13px; color: var(--muted);
+}
+.switchBtn:disabled{ cursor: default; opacity: .6; }
+.switchTrack{
+  position: relative; width: 46px; height: 26px; border-radius: 999px;
+  background: var(--line); transition: background .15s ease;
+}
+.switchThumb{
+  position:absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background:#fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s ease;
+}
+.switchBtn.on{ color: var(--circuit); }
+.switchBtn.on .switchTrack{ background: var(--circuit); }
+.switchBtn.on .switchThumb{ transform: translateX(20px); }
+.workflowState{ margin: 10px 0 0; padding: 8px 12px; border-radius: var(--radius-s); background: var(--paper); font-size: 13px; color: var(--ink-soft); }
+.workflowState.on{ background: var(--circuit-soft); color: var(--circuit); }
+@media (max-width: 480px){ .workflowSetting .sectionHead{ flex-direction: column; } }

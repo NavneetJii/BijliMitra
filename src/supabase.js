@@ -688,6 +688,33 @@ export async function setReviewStatus(reviewId, status) {
   if (error) throw error;
 }
 
+// App-wide switches (public.app_settings). Anyone can read them; only admins
+// can change them (RLS). "skip_bill_confirmation": when ON, an order goes
+// straight from final bill generated -> final payment, with no customer bill
+// confirmation and no Work Completed PIN.
+export async function getAppSetting(key, fallback = null) {
+  if (!supabase) return fallback;
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) return fallback; // table missing (e.g. live before migration) -> today's behaviour
+  return data ? data.value : fallback;
+}
+
+export async function setAppSetting(key, value) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("app_settings")
+    .update({ value, updated_at: new Date().toISOString(), updated_by: user?.id ?? null })
+    .eq("key", key)
+    .select("value");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Setting not saved. Only admins can change it.");
+  return data[0].value;
+}
+
 // Start downloading the service catalog the moment the app's code loads,
 // in parallel with the login check, instead of waiting for the home page
 // to mount first. The home page's "Popular services" reads this.
